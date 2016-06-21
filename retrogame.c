@@ -91,8 +91,8 @@ struct {
 	// This pin/key table is used if an Adafruit PiTFT display
 	// is detected (e.g. Cupcade or PiGRRL).
 	// Input   Output (from /usr/include/linux/input.h)
-	{   2,     KEY_LEFT     },   // Joystick (4 pins)
-	{   3,     KEY_RIGHT    },
+	{  14,     KEY_LEFT     },   // Joystick (4 pins)
+	{  15,     KEY_RIGHT    },
 	{   4,     KEY_DOWN     },
 	{  17,     KEY_UP       },
 	{  27,     KEY_Z        },   // A/Fire/jump/primary
@@ -287,13 +287,17 @@ int main(int argc, char *argv[]) {
 	signal(SIGKILL, signalHandler);
 
 	// Select io[] table for Cupcade (TFT) or 'normal' project.
-	io = (access("/etc/modprobe.d/adafruit.conf", F_OK) ||
-	      access("/dev/fb1", F_OK)) ? ioStandard : ioTFT;
+//	io = (access("/etc/modprobe.d/adafruit.conf", F_OK) ||
+//	      access("/dev/fb1", F_OK)) ? ioStandard : ioTFT;
+
+	io = ioTFT;
+	if (argc > 1) printf("using ioTFT layout\n");
 
 	// If this is a "Revision 1" Pi board (no mounting holes),
 	// remap certain pin numbers in the io[] array for compatibility.
 	// This way the code doesn't need modification for old boards.
 	board = boardType();
+	if (argc > 1) printf("board type %d\n", board);
 	if(board == 0) {
 		for(i=0; io[i].pin >= 0; i++) {
 			if(     io[i].pin ==  2) io[i].pin = 0;
@@ -351,6 +355,8 @@ int main(int argc, char *argv[]) {
 			if(pinConfig(io[i].pin, "direction", "out") ||
 			   pinConfig(io[i].pin, "value"    , "0"))
 				err("Pin config failed (GND)");
+
+			if (argc > 1) printf("GPIO %d set GND (out)\n", io[i].pin);
 		} else {
 			// Set pin to input, detect rise+fall events
 			if(pinConfig(io[i].pin, "direction", "in") ||
@@ -375,6 +381,9 @@ int main(int argc, char *argv[]) {
 			p[j].events  = POLLPRI; // Set up poll() events
 			p[j].revents = 0;
 			j++;
+
+			if (argc > 1) printf("GPIO %d set to in\n", io[i].pin);
+
 		}
 	} // 'j' is now count of non-GND items in io[] table
 	close(fd); // Done exporting
@@ -465,6 +474,7 @@ int main(int argc, char *argv[]) {
 						extstate[j] = intstate[j];
 						keyEv.code  = io[i].key;
 						keyEv.value = intstate[j];
+						if (argc > 1) printf("key %d : %d\n", i, keyEv.code);
 						write(fd, &keyEv,
 						  sizeof(keyEv));
 						c = 1; // Follow w/SYN event
@@ -472,6 +482,7 @@ int main(int argc, char *argv[]) {
 							// Note pressed key
 							// and set initial
 							// repeat interval.
+
 							lastKey = i;
 							timeout = repTime1;
 						} else { // Release?
