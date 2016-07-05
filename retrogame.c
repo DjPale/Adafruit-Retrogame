@@ -139,6 +139,11 @@ const int           vulcanKey  = KEY_ESC, // Keycode to send
                     repTime1   = 500,     // Key hold time to begin repeat
                     repTime2   = 100;     // Time between key repetitions
 
+const unsigned long vulcanKillMask = (1L << 3) | (1L << 6);
+const int vulcanKillTime = 2000;
+
+#define VULCAN_KILL "/opt/retropie/supplementary/runcommand/killcommand.sh"
+
 
 // A few globals ---------------------------------------------------------
 
@@ -503,8 +508,13 @@ int main(int argc, char *argv[]) {
 			// a button state change, esc keypress will be sent.
 			if((bitMask & vulcanMask) == vulcanMask)
 				timeout = vulcanTime;
+
+			if((bitMask & vulcanKillMask) == vulcanKillMask)
+				timeout = vulcanKillTime;
+
 		} else if(timeout == vulcanTime) { // Vulcan timeout occurred
 			// Send keycode (MAME exits or displays exit menu)
+			if (argc > 1) printf("vulcan key\n");
 			keyEv.code = vulcanKey;
 			for(i=1; i>= 0; i--) { // Press, release
 				keyEv.value = i;
@@ -515,6 +525,11 @@ int main(int argc, char *argv[]) {
 			}
 			timeout = -1; // Return to normal processing
 			c       = 0;  // No add'l SYN required
+		} else if(timeout == vulcanKillTime) {
+			if (argc > 1) printf("vulcan kill\n");
+			system(VULCAN_KILL);
+			timeout = -1;
+			c	= 0;
 		} else if(lastKey >= 0) { // Else key repeat timeout
 			if(timeout == repTime1) timeout = repTime2;
 			else if(timeout > 30)   timeout -= 5; // Accelerate
@@ -537,3 +552,4 @@ int main(int argc, char *argv[]) {
 
 	return 0;
 }
+
